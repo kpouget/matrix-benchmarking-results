@@ -62,7 +62,7 @@ EOF
 
 ```
 PVC_NAME=benchmarking-coco-dataset
-PVC_NAMESPACE=default
+NAMESPACE=default
 STORAGE_CLASS_NAME=local-sc-dgx
 
 cat <<EOF | oc apply -f-
@@ -70,7 +70,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: $PVC_NAME
-  namespace: $PVC_NAMESPACE
+  namespace: $NAMESPACE
 spec:
   accessModes:
     - ReadWriteOnce
@@ -85,19 +85,28 @@ EOF
 
 ```
 NODE_NAME=dgxa100
-./run_toolbox.py benchmarking download_coco_dataset $NODE_NAME
+NAMESPACE=default
+PVC_NAME=benchmarking-coco-dataset
+./run_toolbox.py benchmarking download_coco_dataset $NODE_NAME \
+                 --namespace $NAMESPACE \
+                 --pvc-name $PVC_NAME
 ```
 
 3. Build the MLPerf NVIDIA PyToch SSD image
 
 ```
-IMG_NAMESPACE=default
+oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{"spec":{"managementState":"Managed"}}'
+oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{"spec":{"storage":{"emptyDir":{}}}}'
+```
+
+```
+NAMESPACE=default
 cat <<EOF | oc apply -f-
 kind: ImageStream
 apiVersion: image.openshift.io/v1
 metadata:
   name: mlperf
-  namespace: $IMG_NAMESPACE
+  namespace: $NAMESPACE
   labels:
     app: mlperf
 spec: {}
@@ -105,15 +114,15 @@ EOF
 ```
 
 ```
+NAMESPACE=default
 cat <<EOF | oc apply -f-
-IMG_NAMESPACE=default
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
   labels:
     app: mlperf
   name: mlperf0.7
-  namespace: $IMG_NAMESPACE
+  namespace: $NAMESPACE
 spec:
   output:
     to:
@@ -141,7 +150,16 @@ EOF
 
 # Allow extra MIG modes
 
-
+```
 oc apply -f mig-custom.yaml
 
 set "/spec/migManager/config/name" = custom-mig-config
+```
+
+# Enable MIG metrics
+
+```
+oc patch clusterpolicy/gpu-cluster-policy --type='json' -p='[{"op": "replace", "path": "/spec/dcgmExporter/repository", "value": "nvcr.io/nvidia/k8s"}]'
+oc patch clusterpolicy/gpu-cluster-policy --type='json' -p='[{"op": "replace", "path": "/spec/dcgmExporter/image", "value": "dcgm-exporter"}]'
+oc patch clusterpolicy/gpu-cluster-policy --type='json' -p='[{"op": "replace", "path": "/spec/dcgmExporter/version", "value": "2.3.1-2.6.1-ubi8"}]'
+```
