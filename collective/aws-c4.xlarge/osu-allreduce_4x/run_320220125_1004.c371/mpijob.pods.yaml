@@ -1,0 +1,967 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      k8s.v1.cni.cncf.io/network-status: |-
+        [{
+            "name": "openshift-sdn",
+            "interface": "eth0",
+            "ips": [
+                "10.130.2.79"
+            ],
+            "default": true,
+            "dns": {}
+        }]
+      k8s.v1.cni.cncf.io/networks-status: |-
+        [{
+            "name": "openshift-sdn",
+            "interface": "eth0",
+            "ips": [
+                "10.130.2.79"
+            ],
+            "default": true,
+            "dns": {}
+        }]
+      openshift.io/scc: anyuid
+    creationTimestamp: "2022-01-25T09:04:36Z"
+    generateName: osu-allreduce-4procs-launcher--1-
+    labels:
+      controller-uid: 376d9e1d-668a-4fb5-a89e-d396adc024b8
+      job-name: osu-allreduce-4procs-launcher
+      training.kubeflow.org/job-name: osu-allreduce-4procs
+      training.kubeflow.org/job-role: launcher
+      training.kubeflow.org/operator-name: mpi-operator
+    name: osu-allreduce-4procs-launcher--1-m8zv6
+    namespace: mpi-benchmark
+    ownerReferences:
+    - apiVersion: batch/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Job
+      name: osu-allreduce-4procs-launcher
+      uid: 376d9e1d-668a-4fb5-a89e-d396adc024b8
+    resourceVersion: "47530"
+    uid: 2056d1b9-33c5-43af-b321-74bff39cdd3a
+  spec:
+    containers:
+    - command:
+      - mpirun
+      - --allow-run-as-root
+      - -np
+      - "4"
+      - -bind-to
+      - none
+      - -map-by
+      - slot
+      - -mca
+      - pml
+      - ob1
+      - -mca
+      - btl
+      - ^openib
+      - bash
+      - -c
+      - /opt/osu-micro-benchmarks/libexec/osu-micro-benchmarks/mpi/collective/osu_allreduce
+      env:
+      - name: K_MPI_JOB_ROLE
+        value: launcher
+      - name: OMPI_MCA_orte_keep_fqdn_hostnames
+        value: "true"
+      - name: OMPI_MCA_orte_default_hostfile
+        value: /etc/mpi/hostfile
+      - name: OMPI_MCA_plm_rsh_args
+        value: -o ConnectionAttempts=10
+      - name: OMPI_MCA_orte_set_default_slots
+        value: "1"
+      - name: NVIDIA_VISIBLE_DEVICES
+      - name: NVIDIA_DRIVER_CAPABILITIES
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:base
+      imagePullPolicy: Always
+      name: mpi-launcher
+      resources: {}
+      securityContext:
+        capabilities:
+          drop:
+          - MKNOD
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /root/.ssh
+        name: ssh-auth
+      - mountPath: /etc/mpi
+        name: mpi-job-config
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-n869j
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    hostname: osu-allreduce-4procs-launcher
+    imagePullSecrets:
+    - name: default-dockercfg-nchh4
+    initContainers:
+    - command:
+      - bash
+      - -cx
+      - '[[ $(cat /etc/mpi/hostfile | wc -l) != 0 ]] && (date; echo ''Hostfile is
+        ready''; cat /etc/mpi/hostfile) || (date; echo ''Hostfile not ready ...'';
+        sleep 10; exit 1) && while read host; do while ! ssh $host echo $host ; do
+        date; echo "Pod $host is not up ..."; sleep 10; done; date; echo "Pod $host
+        is ready"; done <<< "$(cat /etc/mpi/hostfile)"'
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:base
+      imagePullPolicy: IfNotPresent
+      name: wait-hostfilename
+      resources: {}
+      securityContext:
+        capabilities:
+          drop:
+          - MKNOD
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /etc/mpi
+        name: mpi-job-config
+      - mountPath: /root/.ssh
+        name: ssh-auth
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-n869j
+        readOnly: true
+    nodeName: ip-10-0-134-246.eu-central-1.compute.internal
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: OnFailure
+    schedulerName: default-scheduler
+    securityContext:
+      seLinuxOptions:
+        level: s0:c26,c15
+    serviceAccount: default
+    serviceAccountName: default
+    subdomain: osu-allreduce-4procs-worker
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: ssh-auth
+      secret:
+        defaultMode: 384
+        items:
+        - key: ssh-privatekey
+          path: id_rsa
+        - key: ssh-publickey
+          path: id_rsa.pub
+        - key: ssh-publickey
+          path: authorized_keys
+        secretName: osu-allreduce-4procs-ssh
+    - configMap:
+        defaultMode: 420
+        items:
+        - key: hostfile
+          mode: 292
+          path: hostfile
+        - key: discover_hosts.sh
+          mode: 365
+          path: discover_hosts.sh
+        name: osu-allreduce-4procs-config
+      name: mpi-job-config
+    - name: kube-api-access-n869j
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+        - configMap:
+            items:
+            - key: service-ca.crt
+              path: service-ca.crt
+            name: openshift-service-ca.crt
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:48Z"
+      reason: PodCompleted
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:05:00Z"
+      reason: PodCompleted
+      status: "False"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:05:00Z"
+      reason: PodCompleted
+      status: "False"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:36Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: cri-o://8c42112c83476a1b4ec291e1a22f1141bcbe786b80bcdef8f7eeabf67da2cf60
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:base
+      imageID: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench@sha256:557c456dfdd215e17c7ff15f89e13c128b523b0c75cb312c49585073e69131a0
+      lastState: {}
+      name: mpi-launcher
+      ready: false
+      restartCount: 0
+      started: false
+      state:
+        terminated:
+          containerID: cri-o://8c42112c83476a1b4ec291e1a22f1141bcbe786b80bcdef8f7eeabf67da2cf60
+          exitCode: 0
+          finishedAt: "2022-01-25T09:04:59Z"
+          reason: Completed
+          startedAt: "2022-01-25T09:04:49Z"
+    hostIP: 10.0.134.246
+    initContainerStatuses:
+    - containerID: cri-o://982e03a602059416f2eab4126355fbb618061459e9862c8ad96cb4c0643d5daa
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:base
+      imageID: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench@sha256:557c456dfdd215e17c7ff15f89e13c128b523b0c75cb312c49585073e69131a0
+      lastState: {}
+      name: wait-hostfilename
+      ready: true
+      restartCount: 0
+      state:
+        terminated:
+          containerID: cri-o://982e03a602059416f2eab4126355fbb618061459e9862c8ad96cb4c0643d5daa
+          exitCode: 0
+          finishedAt: "2022-01-25T09:04:48Z"
+          reason: Completed
+          startedAt: "2022-01-25T09:04:38Z"
+    phase: Succeeded
+    podIP: 10.130.2.79
+    podIPs:
+    - ip: 10.130.2.79
+    qosClass: BestEffort
+    startTime: "2022-01-25T09:04:36Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      k8s.v1.cni.cncf.io/network-status: |-
+        [{
+            "name": "openshift-sdn",
+            "interface": "eth0",
+            "ips": [
+                "10.131.2.13"
+            ],
+            "default": true,
+            "dns": {}
+        }]
+      k8s.v1.cni.cncf.io/networks-status: |-
+        [{
+            "name": "openshift-sdn",
+            "interface": "eth0",
+            "ips": [
+                "10.131.2.13"
+            ],
+            "default": true,
+            "dns": {}
+        }]
+      openshift.io/scc: privileged
+    creationTimestamp: "2022-01-25T09:04:36Z"
+    labels:
+      app: osu-allreduce-4procs-worker
+      training.kubeflow.org/job-name: osu-allreduce-4procs
+      training.kubeflow.org/job-role: worker
+      training.kubeflow.org/operator-name: mpi-operator
+      training.kubeflow.org/replica-index: "0"
+    name: osu-allreduce-4procs-worker-0
+    namespace: mpi-benchmark
+    ownerReferences:
+    - apiVersion: kubeflow.org/v2beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: MPIJob
+      name: osu-allreduce-4procs
+      uid: 9357bcd0-5b96-471a-a1ec-dbf70ba3f303
+    resourceVersion: "47393"
+    uid: dd4cba57-9b82-4e79-9389-4799a0cf4350
+  spec:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.kubernetes.io/master
+              operator: DoesNotExist
+    containers:
+    - command:
+      - /usr/sbin/sshd
+      - -De
+      env:
+      - name: K_MPI_JOB_ROLE
+        value: worker
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:osu-bench
+      imagePullPolicy: Always
+      name: mpi-worker
+      resources: {}
+      securityContext:
+        privileged: true
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /root/.ssh
+        name: ssh-auth
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-vj22m
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    hostname: osu-allreduce-4procs-worker-0
+    imagePullSecrets:
+    - name: default-dockercfg-nchh4
+    nodeName: ip-10-0-149-79.eu-central-1.compute.internal
+    nodeSelector:
+      node.kubernetes.io/instance-type: c4.xlarge
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Never
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    subdomain: osu-allreduce-4procs-worker
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app: osu-allreduce-4procs-worker
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+    volumes:
+    - name: ssh-auth
+      secret:
+        defaultMode: 384
+        items:
+        - key: ssh-privatekey
+          path: id_rsa
+        - key: ssh-publickey
+          path: id_rsa.pub
+        - key: ssh-publickey
+          path: authorized_keys
+        secretName: osu-allreduce-4procs-ssh
+    - name: kube-api-access-vj22m
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+        - configMap:
+            items:
+            - key: service-ca.crt
+              path: service-ca.crt
+            name: openshift-service-ca.crt
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:36Z"
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:39Z"
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:39Z"
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:36Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: cri-o://e58d1fa5bde05394d173b044252c8dc685fa9f4d31e9bd483cc2b0986543ab3d
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:osu-bench
+      imageID: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench@sha256:acae5e0344080fa4abbfa4c652208e9ece002f9199ae331154e3f224d7b80140
+      lastState: {}
+      name: mpi-worker
+      ready: true
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2022-01-25T09:04:38Z"
+    hostIP: 10.0.149.79
+    phase: Running
+    podIP: 10.131.2.13
+    podIPs:
+    - ip: 10.131.2.13
+    qosClass: BestEffort
+    startTime: "2022-01-25T09:04:36Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      k8s.v1.cni.cncf.io/network-status: |-
+        [{
+            "name": "openshift-sdn",
+            "interface": "eth0",
+            "ips": [
+                "10.130.4.10"
+            ],
+            "default": true,
+            "dns": {}
+        }]
+      k8s.v1.cni.cncf.io/networks-status: |-
+        [{
+            "name": "openshift-sdn",
+            "interface": "eth0",
+            "ips": [
+                "10.130.4.10"
+            ],
+            "default": true,
+            "dns": {}
+        }]
+      openshift.io/scc: privileged
+    creationTimestamp: "2022-01-25T09:04:36Z"
+    labels:
+      app: osu-allreduce-4procs-worker
+      training.kubeflow.org/job-name: osu-allreduce-4procs
+      training.kubeflow.org/job-role: worker
+      training.kubeflow.org/operator-name: mpi-operator
+      training.kubeflow.org/replica-index: "1"
+    name: osu-allreduce-4procs-worker-1
+    namespace: mpi-benchmark
+    ownerReferences:
+    - apiVersion: kubeflow.org/v2beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: MPIJob
+      name: osu-allreduce-4procs
+      uid: 9357bcd0-5b96-471a-a1ec-dbf70ba3f303
+    resourceVersion: "47382"
+    uid: 017efaab-2a00-416e-a040-92c78eb9fc70
+  spec:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.kubernetes.io/master
+              operator: DoesNotExist
+    containers:
+    - command:
+      - /usr/sbin/sshd
+      - -De
+      env:
+      - name: K_MPI_JOB_ROLE
+        value: worker
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:osu-bench
+      imagePullPolicy: Always
+      name: mpi-worker
+      resources: {}
+      securityContext:
+        privileged: true
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /root/.ssh
+        name: ssh-auth
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-v98rp
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    hostname: osu-allreduce-4procs-worker-1
+    imagePullSecrets:
+    - name: default-dockercfg-nchh4
+    nodeName: ip-10-0-134-242.eu-central-1.compute.internal
+    nodeSelector:
+      node.kubernetes.io/instance-type: c4.xlarge
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Never
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    subdomain: osu-allreduce-4procs-worker
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app: osu-allreduce-4procs-worker
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+    volumes:
+    - name: ssh-auth
+      secret:
+        defaultMode: 384
+        items:
+        - key: ssh-privatekey
+          path: id_rsa
+        - key: ssh-publickey
+          path: id_rsa.pub
+        - key: ssh-publickey
+          path: authorized_keys
+        secretName: osu-allreduce-4procs-ssh
+    - name: kube-api-access-v98rp
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+        - configMap:
+            items:
+            - key: service-ca.crt
+              path: service-ca.crt
+            name: openshift-service-ca.crt
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:36Z"
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:38Z"
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:38Z"
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:36Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: cri-o://ace101c2b990d0e620beeb11a83738af4e86b543234b7513832ef71cf8310759
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:osu-bench
+      imageID: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench@sha256:acae5e0344080fa4abbfa4c652208e9ece002f9199ae331154e3f224d7b80140
+      lastState: {}
+      name: mpi-worker
+      ready: true
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2022-01-25T09:04:38Z"
+    hostIP: 10.0.134.242
+    phase: Running
+    podIP: 10.130.4.10
+    podIPs:
+    - ip: 10.130.4.10
+    qosClass: BestEffort
+    startTime: "2022-01-25T09:04:36Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      k8s.v1.cni.cncf.io/network-status: |-
+        [{
+            "name": "openshift-sdn",
+            "interface": "eth0",
+            "ips": [
+                "10.128.4.11"
+            ],
+            "default": true,
+            "dns": {}
+        }]
+      k8s.v1.cni.cncf.io/networks-status: |-
+        [{
+            "name": "openshift-sdn",
+            "interface": "eth0",
+            "ips": [
+                "10.128.4.11"
+            ],
+            "default": true,
+            "dns": {}
+        }]
+      openshift.io/scc: privileged
+    creationTimestamp: "2022-01-25T09:04:36Z"
+    labels:
+      app: osu-allreduce-4procs-worker
+      training.kubeflow.org/job-name: osu-allreduce-4procs
+      training.kubeflow.org/job-role: worker
+      training.kubeflow.org/operator-name: mpi-operator
+      training.kubeflow.org/replica-index: "2"
+    name: osu-allreduce-4procs-worker-2
+    namespace: mpi-benchmark
+    ownerReferences:
+    - apiVersion: kubeflow.org/v2beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: MPIJob
+      name: osu-allreduce-4procs
+      uid: 9357bcd0-5b96-471a-a1ec-dbf70ba3f303
+    resourceVersion: "47408"
+    uid: cbee29de-42af-4b0f-bdb2-75fc3963ee4c
+  spec:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.kubernetes.io/master
+              operator: DoesNotExist
+    containers:
+    - command:
+      - /usr/sbin/sshd
+      - -De
+      env:
+      - name: K_MPI_JOB_ROLE
+        value: worker
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:osu-bench
+      imagePullPolicy: Always
+      name: mpi-worker
+      resources: {}
+      securityContext:
+        privileged: true
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /root/.ssh
+        name: ssh-auth
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-jvrkw
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    hostname: osu-allreduce-4procs-worker-2
+    imagePullSecrets:
+    - name: default-dockercfg-nchh4
+    nodeName: ip-10-0-128-143.eu-central-1.compute.internal
+    nodeSelector:
+      node.kubernetes.io/instance-type: c4.xlarge
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Never
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    subdomain: osu-allreduce-4procs-worker
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app: osu-allreduce-4procs-worker
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+    volumes:
+    - name: ssh-auth
+      secret:
+        defaultMode: 384
+        items:
+        - key: ssh-privatekey
+          path: id_rsa
+        - key: ssh-publickey
+          path: id_rsa.pub
+        - key: ssh-publickey
+          path: authorized_keys
+        secretName: osu-allreduce-4procs-ssh
+    - name: kube-api-access-jvrkw
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+        - configMap:
+            items:
+            - key: service-ca.crt
+              path: service-ca.crt
+            name: openshift-service-ca.crt
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:36Z"
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:39Z"
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:39Z"
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:36Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: cri-o://149d0be2be0a1f65b52c5d3fcaf4706d9c7e0ba10523af85dfedda12d09798b5
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:osu-bench
+      imageID: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench@sha256:acae5e0344080fa4abbfa4c652208e9ece002f9199ae331154e3f224d7b80140
+      lastState: {}
+      name: mpi-worker
+      ready: true
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2022-01-25T09:04:39Z"
+    hostIP: 10.0.128.143
+    phase: Running
+    podIP: 10.128.4.11
+    podIPs:
+    - ip: 10.128.4.11
+    qosClass: BestEffort
+    startTime: "2022-01-25T09:04:36Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      k8s.v1.cni.cncf.io/network-status: |-
+        [{
+            "name": "openshift-sdn",
+            "interface": "eth0",
+            "ips": [
+                "10.129.2.40"
+            ],
+            "default": true,
+            "dns": {}
+        }]
+      k8s.v1.cni.cncf.io/networks-status: |-
+        [{
+            "name": "openshift-sdn",
+            "interface": "eth0",
+            "ips": [
+                "10.129.2.40"
+            ],
+            "default": true,
+            "dns": {}
+        }]
+      openshift.io/scc: privileged
+    creationTimestamp: "2022-01-25T09:04:36Z"
+    labels:
+      app: osu-allreduce-4procs-worker
+      training.kubeflow.org/job-name: osu-allreduce-4procs
+      training.kubeflow.org/job-role: worker
+      training.kubeflow.org/operator-name: mpi-operator
+      training.kubeflow.org/replica-index: "3"
+    name: osu-allreduce-4procs-worker-3
+    namespace: mpi-benchmark
+    ownerReferences:
+    - apiVersion: kubeflow.org/v2beta1
+      blockOwnerDeletion: true
+      controller: true
+      kind: MPIJob
+      name: osu-allreduce-4procs
+      uid: 9357bcd0-5b96-471a-a1ec-dbf70ba3f303
+    resourceVersion: "47399"
+    uid: ad759f10-f0af-484f-9a83-277d8e0d7e68
+  spec:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.kubernetes.io/master
+              operator: DoesNotExist
+    containers:
+    - command:
+      - /usr/sbin/sshd
+      - -De
+      env:
+      - name: K_MPI_JOB_ROLE
+        value: worker
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:osu-bench
+      imagePullPolicy: Always
+      name: mpi-worker
+      resources: {}
+      securityContext:
+        privileged: true
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /root/.ssh
+        name: ssh-auth
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-zzrsb
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    hostname: osu-allreduce-4procs-worker-3
+    imagePullSecrets:
+    - name: default-dockercfg-nchh4
+    nodeName: ip-10-0-148-13.eu-central-1.compute.internal
+    nodeSelector:
+      node.kubernetes.io/instance-type: c4.xlarge
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Never
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    subdomain: osu-allreduce-4procs-worker
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app: osu-allreduce-4procs-worker
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+    volumes:
+    - name: ssh-auth
+      secret:
+        defaultMode: 384
+        items:
+        - key: ssh-privatekey
+          path: id_rsa
+        - key: ssh-publickey
+          path: id_rsa.pub
+        - key: ssh-publickey
+          path: authorized_keys
+        secretName: osu-allreduce-4procs-ssh
+    - name: kube-api-access-zzrsb
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+        - configMap:
+            items:
+            - key: service-ca.crt
+              path: service-ca.crt
+            name: openshift-service-ca.crt
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:36Z"
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:39Z"
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:39Z"
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2022-01-25T09:04:36Z"
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - containerID: cri-o://335a58b338d87ccfcf9f07ebe2a3a4d04aad6c7bc48e5368a50aa30e9fad4222
+      image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:osu-bench
+      imageID: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench@sha256:acae5e0344080fa4abbfa4c652208e9ece002f9199ae331154e3f224d7b80140
+      lastState: {}
+      name: mpi-worker
+      ready: true
+      restartCount: 0
+      started: true
+      state:
+        running:
+          startedAt: "2022-01-25T09:04:38Z"
+    hostIP: 10.0.148.13
+    phase: Running
+    podIP: 10.129.2.40
+    podIPs:
+    - ip: 10.129.2.40
+    qosClass: BestEffort
+    startTime: "2022-01-25T09:04:36Z"
+kind: List
+metadata:
+  resourceVersion: ""
+  selfLink: ""

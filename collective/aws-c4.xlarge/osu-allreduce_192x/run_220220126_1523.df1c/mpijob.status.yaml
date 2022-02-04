@@ -1,0 +1,109 @@
+apiVersion: kubeflow.org/v1
+kind: MPIJob
+metadata:
+  creationTimestamp: "2022-01-26T14:24:20Z"
+  generation: 1
+  name: osu-allreduce-192procs
+  namespace: mpi-benchmark
+  resourceVersion: "531118"
+  uid: 20e061b9-ab57-4eff-89da-e3a934a365a2
+spec:
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - command:
+            - mpirun
+            - --allow-run-as-root
+            - -np
+            - "192"
+            - -bind-to
+            - none
+            - -map-by
+            - slot
+            - -mca
+            - pml
+            - ob1
+            - -mca
+            - btl
+            - ^openib
+            - bash
+            - -c
+            - /opt/osu-micro-benchmarks/libexec/osu-micro-benchmarks/mpi/collective/osu_allreduce
+            image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:base
+            imagePullPolicy: Always
+            name: mpi-launcher
+          initContainers:
+          - command:
+            - bash
+            - -cx
+            - '[[ $(cat /etc/mpi/hostfile | wc -l) != 0 ]] && (date; echo ''Hostfile
+              is ready''; cat /etc/mpi/hostfile) || (date; echo ''Hostfile not ready
+              ...''; sleep 10; exit 1) && while read host; do while ! ssh $host echo
+              $host ; do date; echo "Pod $host is not up ..."; sleep 10; done; date;
+              echo "Pod $host is ready"; done <<< "$(cat /etc/mpi/hostfile)"'
+            image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:base
+            name: wait-hostfilename
+            volumeMounts:
+            - mountPath: /etc/mpi
+              name: mpi-job-config
+            - mountPath: /root/.ssh
+              name: ssh-auth
+    Worker:
+      replicas: 192
+      template:
+        metadata:
+          labels:
+            app: osu-allreduce-192procs-worker
+        spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: DoesNotExist
+          containers:
+          - image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:osu-bench
+            imagePullPolicy: Always
+            name: mpi-worker
+            securityContext:
+              privileged: true
+          nodeSelector:
+            node.kubernetes.io/instance-type: c4.xlarge
+          topologySpreadConstraints:
+          - labelSelector:
+              matchLabels:
+                app: osu-allreduce-192procs-worker
+            maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+  slotsPerWorker: 1
+status:
+  completionTime: "2022-01-26T14:26:33Z"
+  conditions:
+  - lastTransitionTime: "2022-01-26T14:24:20Z"
+    lastUpdateTime: "2022-01-26T14:24:20Z"
+    message: MPIJob mpi-benchmark/osu-allreduce-192procs is created.
+    reason: MPIJobCreated
+    status: "True"
+    type: Created
+  - lastTransitionTime: "2022-01-26T14:25:50Z"
+    lastUpdateTime: "2022-01-26T14:25:50Z"
+    message: MPIJob mpi-benchmark/osu-allreduce-192procs is running.
+    reason: MPIJobRunning
+    status: "False"
+    type: Running
+  - lastTransitionTime: "2022-01-26T14:26:33Z"
+    lastUpdateTime: "2022-01-26T14:26:33Z"
+    message: MPIJob mpi-benchmark/osu-allreduce-192procs successfully completed.
+    reason: MPIJobSucceeded
+    status: "True"
+    type: Succeeded
+  replicaStatuses:
+    Launcher:
+      succeeded: 1
+    Worker: {}
+  startTime: "2022-01-26T14:24:20Z"

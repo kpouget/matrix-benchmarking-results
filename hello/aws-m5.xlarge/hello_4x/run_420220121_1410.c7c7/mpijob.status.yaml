@@ -1,0 +1,99 @@
+apiVersion: kubeflow.org/v1
+kind: MPIJob
+metadata:
+  creationTimestamp: "2022-01-21T13:10:25Z"
+  generation: 1
+  name: hello-4procs
+  namespace: mpi-benchmark
+  resourceVersion: "99647"
+  uid: 14b21370-7e33-4198-b55d-34fac956caa3
+spec:
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - command:
+            - mpirun
+            - --allow-run-as-root
+            - -np
+            - "4"
+            - -bind-to
+            - none
+            - -map-by
+            - slot
+            - -mca
+            - pml
+            - ob1
+            - -mca
+            - btl
+            - ^openib
+            - bash
+            - -c
+            - echo hello world
+            image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:base
+            imagePullPolicy: Always
+            name: mpi-launcher
+          initContainers:
+          - command:
+            - bash
+            - -cx
+            - '[[ $(cat /etc/mpi/hostfile | wc -l) != 0 ]] && (date; echo ''Hostfile
+              is ready''; cat /etc/mpi/hostfile) || (date; echo ''Hostfile not ready
+              ...''; sleep 10; exit 1) && while read host; do while ! ssh $host echo
+              $host ; do date; echo "Pod $host is not up ..."; sleep 10; done; date;
+              echo "Pod $host is ready"; done <<< "$(cat /etc/mpi/hostfile)"'
+            image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:base
+            name: wait-hostfilename
+            volumeMounts:
+            - mountPath: /etc/mpi
+              name: mpi-job-config
+            - mountPath: /root/.ssh
+              name: ssh-auth
+    Worker:
+      replicas: 4
+      template:
+        spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: DoesNotExist
+          containers:
+          - image: image-registry.openshift-image-registry.svc:5000/mpi-benchmark/mpi-bench:osu-bench
+            imagePullPolicy: Always
+            name: mpi-worker
+            securityContext:
+              privileged: true
+          nodeSelector:
+            node.kubernetes.io/instance-type: m5.xlarge
+  slotsPerWorker: 1
+status:
+  completionTime: "2022-01-21T13:10:40Z"
+  conditions:
+  - lastTransitionTime: "2022-01-21T13:10:25Z"
+    lastUpdateTime: "2022-01-21T13:10:25Z"
+    message: MPIJob mpi-benchmark/hello-4procs is created.
+    reason: MPIJobCreated
+    status: "True"
+    type: Created
+  - lastTransitionTime: "2022-01-21T13:10:39Z"
+    lastUpdateTime: "2022-01-21T13:10:39Z"
+    message: MPIJob mpi-benchmark/hello-4procs is running.
+    reason: MPIJobRunning
+    status: "False"
+    type: Running
+  - lastTransitionTime: "2022-01-21T13:10:40Z"
+    lastUpdateTime: "2022-01-21T13:10:40Z"
+    message: MPIJob mpi-benchmark/hello-4procs successfully completed.
+    reason: MPIJobSucceeded
+    status: "True"
+    type: Succeeded
+  replicaStatuses:
+    Launcher:
+      succeeded: 1
+    Worker: {}
+  startTime: "2022-01-21T13:10:25Z"
