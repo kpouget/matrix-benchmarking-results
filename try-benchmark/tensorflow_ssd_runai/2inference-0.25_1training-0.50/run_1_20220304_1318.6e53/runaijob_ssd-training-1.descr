@@ -1,0 +1,176 @@
+Name:         ssd-training-1
+Namespace:    matrix-benchmarking
+Labels:       matrix-benchmarking=true
+              matrix-benchmarking-mode=training
+              priorityClassName=build
+              project=hello
+Annotations:  runai-calculated-status: Succeeded
+              runai-current-allocated-gpus: 0.000
+              runai-current-allocated-gpus-memory: 0
+              runai-current-requested-gpus: 0.000
+              runai-current-requested-gpus-memory: 0
+              runai-pending-pods: 0
+              runai-podgroup-requested-gpus: 0.500
+              runai-podgroup-requested-gpus-memory: 0
+              runai-running-pods: 0
+              runai-total-requested-gpus: 0.500
+              runai-total-requested-gpus-memory: 0
+              runai-used-nodes: -
+API Version:  run.ai/v1
+Kind:         RunaiJob
+Metadata:
+  Creation Timestamp:  2022-03-04T12:18:58Z
+  Generation:          1
+  Managed Fields:
+    API Version:  run.ai/v1
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:labels:
+          .:
+          f:matrix-benchmarking:
+          f:matrix-benchmarking-mode:
+          f:priorityClassName:
+      f:spec:
+        .:
+        f:template:
+          .:
+          f:metadata:
+            .:
+            f:labels:
+              .:
+              f:job-name:
+              f:matrix-benchmarking:
+              f:user:
+          f:spec:
+            .:
+            f:containers:
+            f:restartPolicy:
+            f:schedulerName:
+            f:volumes:
+    Manager:      kubectl-create
+    Operation:    Update
+    Time:         2022-03-04T12:18:58Z
+    API Version:  run.ai/v1
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:annotations:
+          .:
+          f:runai-calculated-status:
+          f:runai-current-allocated-gpus:
+          f:runai-current-allocated-gpus-memory:
+          f:runai-current-requested-gpus:
+          f:runai-current-requested-gpus-memory:
+          f:runai-pending-pods:
+          f:runai-podgroup-requested-gpus:
+          f:runai-podgroup-requested-gpus-memory:
+          f:runai-running-pods:
+          f:runai-total-requested-gpus:
+          f:runai-total-requested-gpus-memory:
+          f:runai-used-nodes:
+    Manager:      kube-batch
+    Operation:    Update
+    Time:         2022-03-04T12:19:04Z
+    API Version:  run.ai/v1
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:status:
+        .:
+        f:completionTime:
+        f:conditions:
+        f:startTime:
+        f:succeeded:
+    Manager:         runaijob-controller
+    Operation:       Update
+    Subresource:     status
+    Time:            2022-03-04T12:38:47Z
+  Resource Version:  111872
+  UID:               4ba24871-651c-41b5-aa99-68ff5692e65a
+Spec:
+  Template:
+    Metadata:
+      Annotations:
+        Gpu - Fraction:  0.500000
+      Labels:
+        Job - Name:             ssd-training-1
+        Matrix - Benchmarking:  true
+        Project:                hello
+        User:                   admin
+    Spec:
+      Containers:
+        Args:
+          mkdir /tmp/cfg
+cp -v "$SRC_CONFIG_DIR"/* /tmp/cfg
+sed -i 's|/data/coco2017_tfrecords|'$STORAGE_DIR'/coco2017_tfrecords|' /tmp/cfg/*
+sed -i 's|/checkpoints|'$STORAGE_DIR'/checkpoints|' /tmp/cfg/*
+
+if [[ "training" == "inference" ]]; then
+  count=0
+  while true; do
+    bash -x examples/SSD320_FP16_1GPU_BENCHMARK.sh /tmp/cfg --raport_file=/tmp/summary.json
+    count=$(($count + 1))
+    echo "INFERENCE_LOOP_COUNT=$count"
+  done
+else
+  RESULTS_DIR=/tmp/results
+  mkdir "$RESULTS_DIR"
+  bash -x examples/SSD320_FP16_1GPU_BENCHMARK.sh "$RESULTS_DIR" /tmp/cfg --raport_file=/tmp/summary.json
+fi
+
+        Command:
+          bash
+          -ceuxo
+          pipefail
+        Env:
+          Name:   SRC_CONFIG_DIR
+          Value:  /workdir/models/research/configs/
+          Name:   STORAGE_DIR
+          Value:  /storage
+          Name:   reporterGatewayURL
+          Value:  runai-prometheus-pushgateway.runai.svc.cluster.local:9091
+          Name:   REPORTER_GATEWAY_URL
+          Value:  runai-prometheus-pushgateway.runai.svc.cluster.local:9091
+          Name:   podUUID
+          Value From:
+            Field Ref:
+              Field Path:  metadata.uid
+          Name:            POD_UUID
+          Value From:
+            Field Ref:
+              Field Path:  metadata.uid
+          Name:            NODE_NAME
+          Value From:
+            Field Ref:
+              Field Path:   spec.nodeName
+        Image:              quay.io/openshift-psap/nvidiadl-ssd-training-benchmark:ssd
+        Image Pull Policy:  Always
+        Name:               ctr
+        Resources:
+          Limits:
+          Requests:
+            Cpu:     500m
+            Memory:  52428800
+        Volume Mounts:
+          Mount Path:  /storage/
+          Name:        storage-volume
+      Restart Policy:  Never
+      Scheduler Name:  runai-scheduler
+      Volumes:
+        Name:  storage-volume
+        Persistent Volume Claim:
+          Claim Name:  benchmarking-coco-dataset
+Status:
+  Completion Time:  2022-03-04T12:38:47Z
+  Conditions:
+    Last Probe Time:       2022-03-04T12:38:47Z
+    Last Transition Time:  2022-03-04T12:38:47Z
+    Status:                True
+    Type:                  Complete
+  Start Time:              2022-03-04T12:18:58Z
+  Succeeded:               1
+Events:
+  Type    Reason            Age   From                Message
+  ----    ------            ----  ----                -------
+  Normal  SuccessfulCreate  20m   runaijobcontroller  Created pod: ssd-training-1-0-0
+  Normal  Completed         11s   runaijobcontroller  RunaiJob completed

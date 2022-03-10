@@ -1,0 +1,114 @@
+Name:         ssd-training-1
+Namespace:    matrix-benchmarking
+Priority:     0
+Node:         ip-10-0-143-249.eu-central-1.compute.internal/10.0.143.249
+Start Time:   Wed, 09 Mar 2022 13:11:49 +0100
+Labels:       job-name=ssd-training-1
+              matrix-benchmarking=true
+              runai-pod-job-mutated=true
+Annotations:  k8s.v1.cni.cncf.io/network-status:
+                [{
+                    "name": "openshift-sdn",
+                    "interface": "eth0",
+                    "ips": [
+                        "10.129.8.169"
+                    ],
+                    "default": true,
+                    "dns": {}
+                }]
+              k8s.v1.cni.cncf.io/networks-status:
+                [{
+                    "name": "openshift-sdn",
+                    "interface": "eth0",
+                    "ips": [
+                        "10.129.8.169"
+                    ],
+                    "default": true,
+                    "dns": {}
+                }]
+              openshift.io/scc: anyuid
+Status:       Succeeded
+IP:           10.129.8.169
+IPs:
+  IP:  10.129.8.169
+Containers:
+  cnt:
+    Container ID:  cri-o://c1f8d2b0dbd28f613dfed9101e7592fb30e37677a6fcaa787e988710a370ef8b
+    Image:         quay.io/openshift-psap/nvidiadl-ssd-training-benchmark:ssd
+    Image ID:      quay.io/openshift-psap/nvidiadl-ssd-training-benchmark@sha256:0177e9f4174b98ed1b79a952b2bdf60be6c0a1d7d534b46e6f34a6012db4e52f
+    Port:          <none>
+    Host Port:     <none>
+    Command:
+      bash
+      -ceuxo
+      pipefail
+    Args:
+      mkdir /tmp/cfg
+      cp -v "$SRC_CONFIG_DIR"/* /tmp/cfg
+      sed -i 's|/data/coco2017_tfrecords|'$STORAGE_DIR'/coco2017_tfrecords|' /tmp/cfg/*
+      sed -i 's|/checkpoints|'$STORAGE_DIR'/checkpoints|' /tmp/cfg/*
+      
+      if [[ "training" == "inference" ]]; then
+        count=0
+        while true; do
+          bash -x examples/SSD320_FP16_1GPU_BENCHMARK.sh /tmp/cfg --raport_file=/tmp/summary.json
+          count=$(($count + 1))
+          echo "INFERENCE_LOOP_COUNT=$count"
+        done
+      else
+        RESULTS_DIR=/tmp/results
+        mkdir "$RESULTS_DIR"
+        bash -x examples/SSD320_FP16_1GPU_BENCHMARK.sh "$RESULTS_DIR" /tmp/cfg --raport_file=/tmp/summary.json
+      fi
+      
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Wed, 09 Mar 2022 13:11:55 +0100
+      Finished:     Wed, 09 Mar 2022 13:26:55 +0100
+    Ready:          False
+    Restart Count:  0
+    Limits:
+      nvidia.com/gpu:  1
+    Requests:
+      nvidia.com/gpu:  1
+    Environment:
+      SRC_CONFIG_DIR:  /workdir/models/research/configs/
+      STORAGE_DIR:     /storage
+      INFERENCE_TIME:  
+    Mounts:
+      /storage/ from storage-volume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-8sxfq (ro)
+Conditions:
+  Type              Status
+  Initialized       True 
+  Ready             False 
+  ContainersReady   False 
+  PodScheduled      True 
+Volumes:
+  storage-volume:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  benchmarking-coco-dataset
+    ReadOnly:   false
+  kube-api-access-8sxfq:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+    ConfigMapName:           openshift-service-ca.crt
+    ConfigMapOptional:       <nil>
+QoS Class:                   BestEffort
+Node-Selectors:              node.kubernetes.io/instance-type=p3.2xlarge
+                             nvidia.com/gpu.present=true
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason                  Age   From                     Message
+  ----    ------                  ----  ----                     -------
+  Normal  Scheduled               30m   default-scheduler        Successfully assigned matrix-benchmarking/ssd-training-1 to ip-10-0-143-249.eu-central-1.compute.internal
+  Normal  SuccessfulAttachVolume  30m   attachdetach-controller  AttachVolume.Attach succeeded for volume "pvc-515166e3-93a9-4719-bf16-961a29366905"
+  Normal  AddedInterface          30m   multus                   Add eth0 [10.129.8.169/23] from openshift-sdn
+  Normal  Pulled                  30m   kubelet                  Container image "quay.io/openshift-psap/nvidiadl-ssd-training-benchmark:ssd" already present on machine
+  Normal  Created                 30m   kubelet                  Created container cnt
+  Normal  Started                 30m   kubelet                  Started container cnt

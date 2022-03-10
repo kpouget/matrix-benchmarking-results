@@ -1,0 +1,157 @@
+Name:         ssd-inference-2-0-0
+Namespace:    matrix-benchmarking
+Priority:     0
+Node:         ip-10-0-143-249.eu-central-1.compute.internal/10.0.143.249
+Start Time:   Wed, 09 Mar 2022 17:33:23 +0100
+Labels:       controller-uid=64ebe7e3-b217-4a73-8b31-6736f4fd00f2
+              job-name=ssd-inference-2
+              matrix-benchmarking=true
+              project=hello
+              runai-pod-job-mutated=true
+              runai/pod-index=0-0
+              user=admin
+Annotations:  gpu-fraction: 0.200000
+              k8s.v1.cni.cncf.io/network-status:
+                [{
+                    "name": "openshift-sdn",
+                    "interface": "eth0",
+                    "ips": [
+                        "10.129.9.61"
+                    ],
+                    "default": true,
+                    "dns": {}
+                }]
+              k8s.v1.cni.cncf.io/networks-status:
+                [{
+                    "name": "openshift-sdn",
+                    "interface": "eth0",
+                    "ips": [
+                        "10.129.9.61"
+                    ],
+                    "default": true,
+                    "dns": {}
+                }]
+              openshift.io/scc: runai-jupyter-notebook
+              pod-group-name: pg-ssd-inference-2-64ebe7e3-b217-4a73-8b31-6736f4fd00f2
+              runai-allocated-mig-gpus: 0
+              runai-calculated-status: Succeeded
+              runai-gpu: 0
+              runai-node: ip-10-0-143-249.eu-central-1.compute.internal
+Status:       Succeeded
+IP:           10.129.9.61
+IPs:
+  IP:           10.129.9.61
+Controlled By:  RunaiJob/ssd-inference-2
+Containers:
+  ctr:
+    Container ID:  cri-o://922756216bca2d8e45cf7ab794b49846bd46d1c228f6cb30932db2aed71c7048
+    Image:         quay.io/openshift-psap/nvidiadl-ssd-training-benchmark:ssd
+    Image ID:      quay.io/openshift-psap/nvidiadl-ssd-training-benchmark@sha256:0177e9f4174b98ed1b79a952b2bdf60be6c0a1d7d534b46e6f34a6012db4e52f
+    Port:          <none>
+    Host Port:     <none>
+    Command:
+      bash
+      -ceuxo
+      pipefail
+    Args:
+      mkdir /tmp/cfg
+      cp -v "$SRC_CONFIG_DIR"/* /tmp/cfg
+      sed -i 's|/data/coco2017_tfrecords|'$STORAGE_DIR'/coco2017_tfrecords|' /tmp/cfg/*
+      sed -i 's|/checkpoints|'$STORAGE_DIR'/checkpoints|' /tmp/cfg/*
+      
+      if [[ "inference" == "inference" ]]; then
+        count=0
+        SECONDS=0 # Bash special var
+        while true; do
+          bash -x examples/SSD320_FP16_inference.sh  /tmp/cfg --raport_file=/tmp/summary.json
+          count=$(($count + 1))
+          echo "INFERENCE_LOOP_COUNT=$count"
+          if [[ "$INFERENCE_TIME" ]]; then
+            minutes=$((SECONDS/60))
+            if [[ "$minutes" -ge "$INFERENCE_TIME" ]]; then
+              echo "Inference ran for ${minutes}, bailing out."
+              break
+            fi
+          fi
+        done
+      else
+        RESULTS_DIR=/tmp/results
+        mkdir "$RESULTS_DIR"
+        bash -x examples/SSD320_FP16_inference.sh  "$RESULTS_DIR" /tmp/cfg --raport_file=/tmp/summary.json
+      fi
+      
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Wed, 09 Mar 2022 17:33:31 +0100
+      Finished:     Wed, 09 Mar 2022 17:54:07 +0100
+    Ready:          False
+    Restart Count:  0
+    Requests:
+      cpu:     200m
+      memory:  20971520
+    Environment:
+      SRC_CONFIG_DIR:          /workdir/models/research/configs/
+      STORAGE_DIR:             /storage
+      INFERENCE_TIME:          20
+      reporterGatewayURL:      runai-prometheus-pushgateway.runai.svc.cluster.local:9091
+      REPORTER_GATEWAY_URL:    runai-prometheus-pushgateway.runai.svc.cluster.local:9091
+      podUUID:                  (v1:metadata.uid)
+      POD_UUID:                 (v1:metadata.uid)
+      NODE_NAME:                (v1:spec.nodeName)
+      POD_INDEX:               0
+      jobUUID:                 64ebe7e3-b217-4a73-8b31-6736f4fd00f2
+      JOB_UUID:                64ebe7e3-b217-4a73-8b31-6736f4fd00f2
+      jobName:                 ssd-inference-2
+      JOB_NAME:                ssd-inference-2
+      NVIDIA_VISIBLE_DEVICES:  <set to the key 'RUNAI-VISIBLE-DEVICES' of config map 'ssd-inference-2-6s9qktx-runai-sh-gpu'>  Optional: false
+      RUNAI_NUM_OF_GPUS:       <set to the key 'RUNAI_NUM_OF_GPUS' of config map 'ssd-inference-2-6s9qktx-runai-sh-gpu'>      Optional: false
+    Mounts:
+      /etc/ld.so.preload from ssd-inference-2-6s9qktx-runai-sh-gpu-vol (ro,path="ld.so.preload-key")
+      /etc/runai.d/memory from ssd-inference-2-6s9qktx-runai-sh-gpu-vol (ro,path="config")
+      /runai/shared from runai-shared-directory (ro)
+      /storage/ from storage-volume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-g9sk6 (ro)
+Conditions:
+  Type              Status
+  Initialized       True 
+  Ready             False 
+  ContainersReady   False 
+  PodScheduled      True 
+Volumes:
+  storage-volume:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  benchmarking-coco-dataset
+    ReadOnly:   false
+  kube-api-access-g9sk6:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+    ConfigMapName:           openshift-service-ca.crt
+    ConfigMapOptional:       <nil>
+  runai-shared-directory:
+    Type:          HostPath (bare host directory volume)
+    Path:          /var/lib/runai/shared
+    HostPathType:  DirectoryOrCreate
+  ssd-inference-2-6s9qktx-runai-sh-gpu-vol:
+    Type:        ConfigMap (a volume populated by a ConfigMap)
+    Name:        ssd-inference-2-6s9qktx-runai-sh-gpu
+    Optional:    false
+QoS Class:       Burstable
+Node-Selectors:  node.kubernetes.io/instance-type=p3.2xlarge
+                 nvidia.com/gpu.present=true
+Tolerations:     node.kubernetes.io/memory-pressure:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason          Age                From             Message
+  ----     ------          ----               ----             -------
+  Normal   Scheduled       21m                runai-scheduler  Successfully assigned matrix-benchmarking/ssd-inference-2-0-0 to ip-10-0-143-249.eu-central-1.compute.internal
+  Normal   AddedInterface  21m                multus           Add eth0 [10.129.9.61/23] from openshift-sdn
+  Normal   Pulling         21m                kubelet          Pulling image "quay.io/openshift-psap/nvidiadl-ssd-training-benchmark:ssd"
+  Normal   Pulled          21m                kubelet          Successfully pulled image "quay.io/openshift-psap/nvidiadl-ssd-training-benchmark:ssd" in 1.171311164s
+  Normal   Created         21m                kubelet          Created container ctr
+  Normal   Started         21m                kubelet          Started container ctr
+  Warning  FailedMount     68s (x2 over 68s)  kubelet          MountVolume.SetUp failed for volume "ssd-inference-2-6s9qktx-runai-sh-gpu-vol" : object "matrix-benchmarking"/"ssd-inference-2-6s9qktx-runai-sh-gpu" not registered

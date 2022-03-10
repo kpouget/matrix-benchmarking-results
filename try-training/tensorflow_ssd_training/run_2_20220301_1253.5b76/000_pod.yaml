@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+ name: "ssd"
+ namespace: matrix-benchmarking
+spec:
+  containers:
+  - name: cnt
+    image: "quay.io/openshift-psap/nvidiadl-ssd-training-benchmark:ssd"
+    command: [ "bash", "-ceuxo", "pipefail"]
+    args:
+    - |
+      mkdir -p /data /checkpoints/
+
+      ln -s /storage/coco2017_tfrecords/ /data/coco2017_tfrecords
+      ln -s /storage/checkpoints/resnet_v1_50/ /checkpoints/
+      bash -x examples/SSD320_FP16_1GPU_BENCHMARK.sh
+    volumeMounts:
+      - mountPath: /storage/
+        name: storage-volume
+  volumes:
+  - name: storage-volume
+    persistentVolumeClaim:
+      claimName: benchmarking-coco-dataset
+  restartPolicy: Never
+  nodeSelector:
+    nvidia.com/gpu.present: "true"

@@ -1,0 +1,61 @@
+apiVersion: run.ai/v1
+kind: RunaiJob
+metadata:
+  name: "ssd-inference-1"
+  namespace: "matrix-benchmarking"
+  labels:
+    priorityClassName: "build"
+    matrix-benchmarking: "true"
+    matrix-benchmarking-mode: "inference"
+spec:
+  template:
+    metadata:
+      labels:
+        user: admin
+        matrix-benchmarking: "true"
+        job-name: "ssd-inference-1"
+    spec:
+      restartPolicy: Never
+      schedulerName: runai-scheduler
+      containers:
+      - image: "quay.io/openshift-psap/nvidiadl-ssd-training-benchmark:ssd"
+        imagePullPolicy: Always
+        resources:
+          limits:
+            nvidia.com/gpu: 0.5
+        name: ctr
+        env:
+        - name: SRC_CONFIG_DIR
+          value: /workdir/models/research/configs/
+        - name: STORAGE_DIR
+          value: /storage
+        command: [ "bash", "-ceuxo", "pipefail"]
+        args:
+        - |
+          mkdir /tmp/cfg
+          cp -v "$SRC_CONFIG_DIR"/* /tmp/cfg
+          sed -i 's|/data/coco2017_tfrecords|'$STORAGE_DIR'/coco2017_tfrecords|' /tmp/cfg/*
+          sed -i 's|/checkpoints|'$STORAGE_DIR'/checkpoints|' /tmp/cfg/*
+
+          if [[ "inference" == "inference" ]]; then
+            count=0
+            while true; do
+              bash -x examples/SSD320_FP16_inference.sh  /tmp/cfg --raport_file=/tmp/summary.json
+              count=$(($count + 1))
+              echo "INFERENCE_LOOP_COUNT=$count"
+            done
+          else
+            RESULTS_DIR=/tmp/results
+            mkdir "$RESULTS_DIR"
+            bash -x examples/SSD320_FP16_inference.sh  "$RESULTS_DIR" /tmp/cfg --raport_file=/tmp/summary.json
+          fi
+        volumeMounts:
+        - mountPath: /storage/
+          name: storage-volume
+        resources:
+          limits:
+            nvidia.com/gpu: "0.50"
+      volumes:
+      - name: storage-volume
+        persistentVolumeClaim:
+          claimName: benchmarking-coco-dataset
